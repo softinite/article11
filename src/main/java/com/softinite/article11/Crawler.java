@@ -25,6 +25,7 @@ public class Crawler {
     private Configuration configuration;
 
     public Crawler(Configuration configuration) {
+        log.info("Setting up crawler with configuration=" + configuration.toString());
         setConfiguration(configuration);
     }
 
@@ -36,16 +37,18 @@ public class Crawler {
             Elements mainContents = document.select("#content_inner");
             Elements middleCol = mainContents.select("#middlecol");
             Element itemPage = middleCol.select(".item-page").first();
+            Record currentRecord = new Record();
             for(Element node : itemPage.children()) {
                 if (StringUtils.equals(node.tagName(), "h2")) {
                     log.info("Found title=" + StringUtils.trim(node.text()));
-                } else if (StringUtils.equals(node.tagName(), "p")) {
+                } else if (StringUtils.equals(node.tagName(), "p") || StringUtils.equals(node.tagName(), "h3")) {
                     String content = StringUtils.trim(node.text());
                     if (NumberUtils.isDigits(content)) {
-                        log.info("Processing the year " + content);
+                        currentRecord = new Record();
+                        currentRecord.setYear(content);
                     }
                 } else if (StringUtils.equals(node.tagName(), "ul")) {
-                    processListElements(node.select("li"));
+                    processListElements(node.select("li"), currentRecord);
                 }
             }
         } catch (Exception e) {
@@ -53,22 +56,37 @@ public class Crawler {
         }
     }
 
-    private void processListElements(Elements listElements) {
+    private void processListElements(Elements listElements, Record currentRecord) {
+        if (getConfiguration().getYears() != null && getConfiguration().getYears().size() > 0 && !getConfiguration().getYears().contains(currentRecord.getYear())) {
+            return;
+        }
         for(Element node : listElements) {
-            processPdfLine(node);
+            processPdfLine(node, currentRecord);
         }
     }
 
-    private void processPdfLine(Element node) {
-        log.info(StringUtils.trim(node.text()));
+    private void processPdfLine(Element node, Record currentRecord) {
+        currentRecord.setPublicationDate(fetchDate(node));
         Elements links = node.getElementsByTag("a");
         for(Element link : links) {
-            processPdfLink(link);
+            processPdfLink(link, currentRecord);
         }
     }
 
-    private void processPdfLink(Element link) {
-        log.info(StringUtils.trim(link.text()) + "=" + link.attr("abs:href"));
+    private String fetchDate(Element node) {
+        if (node != null) {
+            Elements strongElements = node.getElementsByTag("strong");
+            if (strongElements != null && strongElements.size() > 0) {
+                return StringUtils.trim(strongElements.first().text());
+            }
+        }
+        return StringUtils.EMPTY;
+    }
+
+    private void processPdfLink(Element link, Record currentRecord) {
+        currentRecord.setDocumentNumber(StringUtils.trim(link.text()));
+        currentRecord.setDocumentUrl(link.attr("abs:href"));
+        log.info("Investigating record document " + currentRecord.toString());
     }
 
 }
