@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.java.Log;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.jsoup.Jsoup;
@@ -12,6 +13,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.File;
+import java.net.URL;
 import java.util.logging.Level;
 
 /**
@@ -86,7 +89,39 @@ public class Crawler {
     private void processPdfLink(Element link, Record currentRecord) {
         currentRecord.setDocumentNumber(StringUtils.trim(link.text()));
         currentRecord.setDocumentUrl(link.attr("abs:href"));
-        log.info("Investigating record document " + currentRecord.toString());
+        log.info("Investigate record document " + currentRecord.toString());
+        String documentName = fetchName(currentRecord.getDocumentUrl());
+        if (documentName != null) {
+            File documentFile = new File("records" + File.separator + documentName);
+            if (!documentFile.exists()) {
+                downloadPdfDocument(currentRecord.getDocumentUrl(), documentFile);
+            }
+            scanDocument(documentFile, getConfiguration().getNamePrefix());
+        }
+    }
+
+    protected void scanDocument(File documentFile, String namePrefix) {
+
+    }
+
+    protected void downloadPdfDocument(String documentUrl, File documentFile) {
+        log.info("downloading: " + documentUrl);
+        try {
+            URL url = new URL(documentUrl);
+            FileUtils.copyURLToFile(url, documentFile);
+        } catch (Exception e) {
+            log.log(Level.SEVERE, "Failed to download document " + documentUrl, e);
+        }
+    }
+
+    protected String fetchName(String documentUrl) {
+        if (StringUtils.isNotBlank(documentUrl)) {
+            String[] urlElements = StringUtils.split(documentUrl, "/");
+            if (urlElements != null && urlElements.length > 1) {
+                return urlElements[urlElements.length - 1];
+            }
+        }
+        return null;
     }
 
 }
