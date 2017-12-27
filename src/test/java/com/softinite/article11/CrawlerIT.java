@@ -23,6 +23,11 @@ public class CrawlerIT {
     }
 
     @Test
+    public void scanDocument() {
+        crawler.scanDocument(new File("/tmp/crawler/Ordin_nr._1008P_din_22.12.2017.pdf"), "florea", new Record());
+    }
+
+    @Test
     public void downloadPdfDocument() {
         String docUrl = "http://cetatenie.just.ro/images/Ordin_nr._1008P_din_22.12.2017.pdf";
         String docName = crawler.fetchName(docUrl);
